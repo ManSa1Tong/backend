@@ -2,19 +2,19 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class EventNoticeListDto {
   @ApiProperty({
-    example: 'League of Legends (@LeagueOfLegends) / Twitter',
+    example: '[챔피언 버닝] - 챔피언 더블 업 & 챌린지',
     description: '공지 제목',
   })
   title: string;
 
   @ApiProperty({
-    example: 'League of Legends (@LeagueOfLegends) / Twitter',
+    example: 'https://maplestory.nexon.com/News/Event/1103',
     description: '공지 링크',
   })
   url: string;
 
   @ApiProperty({
-    example: 1,
+    example: 1103,
     description: '공지 식별자',
   })
   notice_id: number;
