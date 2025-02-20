@@ -4,6 +4,6 @@ import { MapleService } from './maple.service';
 
 @Module({
   controllers: [MapleController],
-  providers: [MapleService]
+  providers: [MapleService],
 })
 export class MapleModule {}
