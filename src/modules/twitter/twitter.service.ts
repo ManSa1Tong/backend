@@ -8,12 +8,8 @@ import { TweetDto } from '../twitter/dto/twitter.dto'; // DTO 임포트 추가
 export class TwitterService {
   private parser = new Parser();
 
-  // 여러 트위터 계정의 RSS 피드 리스트
-  private rssFeeds = [
-    'https://rss.app/feeds/0EW1bm4tNaraTsn3.xml',
-    'https://rss.app/feeds/lYsRIM6howr3MKZA.xml',
-    'https://rss.app/feeds/1PtEYSEzhN08M2YZ.xml',
-  ];
+  // 🔥 환경변수에서 RSS 피드 리스트 불러오기
+  private rssFeeds: string[] = process.env.RSS_FEEDS?.split(',') || [];
 
   async getLatestTweets(): Promise<{ accounts: Record<string, TweetDto[]> }> {
     const allTweets: TweetDto[] = [];
