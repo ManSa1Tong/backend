@@ -1,0 +1,8 @@
+{
+  "editor.formatOnSave": true, // 파일 저장 시 자동 포맷팅
+  "editor.defaultFormatter": "esbenp.prettier-vscode", // 기본 포맷터를 Prettier로 설정
+  "eslint.validate": ["javascript", "typescript"], // ESLint 적용할 파일 유형 지정
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit" // 저장 시 ESLint 자동 실행
+  }
+}
