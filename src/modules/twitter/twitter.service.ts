@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import * as Parser from 'rss-parser';
-// const Parser = require('rss-parser');
 import * as cheerio from 'cheerio'; // HTML 제거를 위한 cheerio 라이브러리
 import { TweetDto } from '../twitter/dto/twitter.dto'; // DTO 임포트 추가
 
