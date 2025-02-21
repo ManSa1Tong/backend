@@ -1,6 +1,6 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { MovieService } from './movie.service';
-import { GetDaliyMovieDto, GetWeeklyMovieDto } from './dto/fetch-Movie.dto';
+import { GetDaliyMovieDto, GetWeeklyMovieDto } from './dto/fetch-movie.dto';
 import { ApiGetDaliyMovie, ApiGetWeeklyMovie } from './dto/movie.controller';
 
 @Controller('movie')
