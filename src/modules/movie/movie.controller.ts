@@ -7,7 +7,15 @@ export class MovieController {
   constructor(private movieService: MovieService) {}
 
   @Get('/daily')
-  async getManyDaliyMovie(@Query() { targetDt }: GetDaliyMovieDto) {
-    return await this.movieService.fetchManyDailyMovie({ targetDt });
+  async getManyDaliyMovie(
+    @Query()
+    { targetDt, itemPerPage, multiMovieYn, repNationCd }: GetDaliyMovieDto,
+  ) {
+    return await this.movieService.fetchManyDailyMovie({
+      targetDt,
+      itemPerPage,
+      multiMovieYn,
+      repNationCd,
+    });
   }
 }

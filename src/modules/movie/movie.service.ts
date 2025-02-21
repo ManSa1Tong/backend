@@ -3,7 +3,17 @@ import axios from 'axios';
 
 @Injectable()
 export class MovieService {
-  async fetchManyDailyMovie({ targetDt }: { targetDt: string }) {
+  async fetchManyDailyMovie({
+    targetDt,
+    itemPerPage,
+    multiMovieYn,
+    repNationCd,
+  }: {
+    targetDt: string;
+    itemPerPage?: string;
+    multiMovieYn?: string;
+    repNationCd?: string;
+  }) {
     const MOVIE_API_SERVER =
       'http://kobis.or.kr/kobisopenapi/webservice/rest/boxoffice/searchDailyBoxOfficeList.json';
     const API_KEY = process.env.MOVIE_KEY;
@@ -13,6 +23,9 @@ export class MovieService {
         params: {
           key: API_KEY,
           targetDt,
+          itemPerPage,
+          multiMovieYn,
+          repNationCd,
         },
       });
 
