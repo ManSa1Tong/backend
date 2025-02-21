@@ -85,12 +85,12 @@ export class KopisController {
   @Get('performances/:id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: '공연 상세 조회',
-    description: '특정 공연 ID에 대한 상세 정보를 가져옵니다.',
+    summary: '공연/축제 상세 조회',
+    description: '특정 공연/축제 ID에 대한 상세 정보를 가져옵니다.',
   })
   @ApiResponse({
     status: 200,
-    description: '공연 상세 정보를 성공적으로 반환함.',
+    description: '공연/축제 상세 정보를 성공적으로 반환함.',
     type: GetPerformanceDetailResponseDto,
   })
   @ApiResponse({
