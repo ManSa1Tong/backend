@@ -7,7 +7,7 @@ import { parseStringPromise } from 'xml2js';
 @Injectable()
 export class KopisService {
   private readonly BASE_URL = 'http://kopis.or.kr/openApi/restful';
-  private readonly logger = new Logger(KopisService.name); // ✅ Logger 추가
+  private readonly logger = new Logger(KopisService.name);
 
   constructor(
     private readonly httpService: HttpService,
@@ -25,12 +25,14 @@ export class KopisService {
     return apiKey;
   }
 
-  private validateDateFormat(date: string) {
-    if (!/^\d{8}$/.test(date)) {
-      throw new HttpException(
-        `날짜 형식이 올바르지 않습니다. (YYYYMMDD 형식 필요): ${date}`,
-        HttpStatus.BAD_REQUEST,
-      );
+  private validateDates(...dates: string[]) {
+    for (const date of dates) {
+      if (!/^\d{8}$/.test(date)) {
+        throw new HttpException(
+          `날짜 형식이 올바르지 않습니다. (YYYYMMDD 형식 필요): ${date}`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
     }
   }
 
@@ -47,19 +49,30 @@ export class KopisService {
     }
   }
 
-  // ✅ API 호출 및 JSON 변환 처리 (중복 제거)
-  private async fetchAndParseKopisData(url: string, errorMessage: string) {
+  // ✅ KOPIS API 요청 + JSON 변환 + 에러 처리
+  private async fetchKopisData(
+    endpoint: string,
+    params: Record<string, any>,
+    errorMessage: string,
+  ) {
     try {
+      // ✅ 공통 API URL 생성
+      const queryString = new URLSearchParams({
+        service: this.getApiKey(),
+        ...params,
+      }).toString();
+      const url = `${this.BASE_URL}/${endpoint}?${queryString}`;
+
       const response = await firstValueFrom(this.httpService.get(url));
 
-      let jsonData;
+      let jsonData: Record<string, any> = {}; // ✅ 타입 명시 + 초기화
       if (typeof response.data === 'string') {
         jsonData = await this.parseXmlToJson(response.data);
       } else {
         jsonData = response.data;
       }
 
-      if (!jsonData || !jsonData.dbs || !jsonData.dbs.db) {
+      if (!jsonData?.dbs?.db) {
         throw new HttpException(errorMessage, HttpStatus.NOT_FOUND);
       }
 
@@ -79,11 +92,12 @@ export class KopisService {
     page = 1,
     rows = 10,
   ) {
-    this.validateDateFormat(startDate);
-    this.validateDateFormat(endDate);
-
-    const url = `${this.BASE_URL}/pblprfr?service=${this.getApiKey()}&stdate=${startDate}&eddate=${endDate}&cpage=${page}&rows=${rows}`;
-    return this.fetchAndParseKopisData(url, '공연 목록을 찾을 수 없습니다.');
+    this.validateDates(startDate, endDate);
+    return this.fetchKopisData(
+      'pblprfr',
+      { stdate: startDate, eddate: endDate, cpage: page, rows },
+      '공연 목록을 찾을 수 없습니다.',
+    );
   }
 
   async fetchManyFestivals(
@@ -92,21 +106,21 @@ export class KopisService {
     page = 1,
     rows = 10,
   ) {
-    this.validateDateFormat(startDate);
-    this.validateDateFormat(endDate);
-
-    const url = `${this.BASE_URL}/prffest?service=${this.getApiKey()}&stdate=${startDate}&eddate=${endDate}&cpage=${page}&rows=${rows}`;
-    return this.fetchAndParseKopisData(url, '축제 목록을 찾을 수 없습니다.');
+    this.validateDates(startDate, endDate);
+    return this.fetchKopisData(
+      'prffest',
+      { stdate: startDate, eddate: endDate, cpage: page, rows },
+      '축제 목록을 찾을 수 없습니다.',
+    );
   }
 
   async fetchPerformanceDetail(id: string) {
     if (!id) {
       throw new HttpException('공연 ID가 필요합니다.', HttpStatus.BAD_REQUEST);
     }
-
-    const url = `${this.BASE_URL}/pblprfr/${id}?service=${this.getApiKey()}`;
-    return this.fetchAndParseKopisData(
-      url,
+    return this.fetchKopisData(
+      `pblprfr/${id}`,
+      {},
       '해당 공연 정보를 찾을 수 없습니다.',
     );
   }
