@@ -5,6 +5,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { TwitterModule } from './modules/twitter/twitter.module';
 import { MapleModule } from './modules/maple/maple.module';
 import { ConfigModule } from '@nestjs/config';
+import { MovieModule } from './modules/movie/movie.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { ConfigModule } from '@nestjs/config';
     TwitterModule,
     MapleModule,
     ConfigModule.forRoot({ isGlobal: true }),
+    MovieModule,
   ],
   controllers: [AppController],
   providers: [AppService],
