@@ -21,6 +21,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@nestjs/axios": "^4.0.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.0",
     "@nestjs/core": "^11.0.1",
@@ -32,12 +33,14 @@
     "axios": "^1.7.9",
     "bcrypt": "^5.1.1",
     "cheerio": "^1.0.0",
+    "class-validator": "^0.14.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rss-parser": "^3.13.0",
     "rxjs": "^7.8.1",
-    "twitter-api-v2": "^1.20.1"
+    "twitter-api-v2": "^1.20.1",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
