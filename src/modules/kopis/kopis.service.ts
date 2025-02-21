@@ -34,6 +34,45 @@ export class KopisService {
     }
   }
 
+  // ✅ XML을 JSON으로 변환하는 메서드 (중복 제거)
+  private async parseXmlToJson(xmlData: string): Promise<any> {
+    try {
+      return await parseStringPromise(xmlData, { explicitArray: false });
+    } catch (error) {
+      this.logger.error(`XML 파싱 실패: ${error.message}`);
+      throw new HttpException(
+        `XML 데이터 변환 오류: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // ✅ API 호출 및 JSON 변환 처리 (중복 제거)
+  private async fetchAndParseKopisData(url: string, errorMessage: string) {
+    try {
+      const response = await firstValueFrom(this.httpService.get(url));
+
+      let jsonData;
+      if (typeof response.data === 'string') {
+        jsonData = await this.parseXmlToJson(response.data);
+      } else {
+        jsonData = response.data;
+      }
+
+      if (!jsonData || !jsonData.dbs || !jsonData.dbs.db) {
+        throw new HttpException(errorMessage, HttpStatus.NOT_FOUND);
+      }
+
+      return jsonData.dbs.db;
+    } catch (error) {
+      this.logger.error(`KOPIS API 호출 실패: ${error.message}`);
+      throw new HttpException(
+        `KOPIS API 호출 중 오류 발생: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
   async fetchManyPerformances(
     startDate: string,
     endDate: string,
@@ -43,36 +82,8 @@ export class KopisService {
     this.validateDateFormat(startDate);
     this.validateDateFormat(endDate);
 
-    try {
-      const url = `${this.BASE_URL}/pblprfr?service=${this.getApiKey()}&stdate=${startDate}&eddate=${endDate}&cpage=${page}&rows=${rows}`;
-      const response = await firstValueFrom(this.httpService.get(url));
-
-      // ✅ XML → JSON 변환
-      let jsonData;
-      if (typeof response.data === 'string') {
-        jsonData = await parseStringPromise(response.data, {
-          explicitArray: false,
-        });
-      } else {
-        jsonData = response.data;
-      }
-
-      // ✅ JSON 변환 후 데이터 확인
-      if (!jsonData || !jsonData.dbs || !jsonData.dbs.db) {
-        throw new HttpException(
-          '공연 목록을 찾을 수 없습니다. (KOPIS 응답 데이터 없음)',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      return jsonData.dbs.db; // ✅ 변환된 JSON에서 실제 공연 목록 반환
-    } catch (error) {
-      this.logger.error(`fetchManyPerformances 실패: ${error.message}`);
-      throw new HttpException(
-        `KOPIS API 호출 중 오류 발생: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const url = `${this.BASE_URL}/pblprfr?service=${this.getApiKey()}&stdate=${startDate}&eddate=${endDate}&cpage=${page}&rows=${rows}`;
+    return this.fetchAndParseKopisData(url, '공연 목록을 찾을 수 없습니다.');
   }
 
   async fetchManyFestivals(
@@ -84,34 +95,8 @@ export class KopisService {
     this.validateDateFormat(startDate);
     this.validateDateFormat(endDate);
 
-    try {
-      const url = `${this.BASE_URL}/prffest?service=${this.getApiKey()}&stdate=${startDate}&eddate=${endDate}&cpage=${page}&rows=${rows}`;
-      const response = await firstValueFrom(this.httpService.get(url));
-
-      let jsonData;
-      if (typeof response.data === 'string') {
-        jsonData = await parseStringPromise(response.data, {
-          explicitArray: false,
-        });
-      } else {
-        jsonData = response.data;
-      }
-
-      if (!jsonData || !jsonData.dbs || !jsonData.dbs.db) {
-        throw new HttpException(
-          '축제 목록을 찾을 수 없습니다. (KOPIS 응답 데이터 없음)',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      return jsonData.dbs.db;
-    } catch (error) {
-      this.logger.error(`fetchManyFestivals 실패: ${error.message}`);
-      throw new HttpException(
-        `KOPIS API 호출 중 오류 발생: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const url = `${this.BASE_URL}/prffest?service=${this.getApiKey()}&stdate=${startDate}&eddate=${endDate}&cpage=${page}&rows=${rows}`;
+    return this.fetchAndParseKopisData(url, '축제 목록을 찾을 수 없습니다.');
   }
 
   async fetchPerformanceDetail(id: string) {
@@ -119,35 +104,10 @@ export class KopisService {
       throw new HttpException('공연 ID가 필요합니다.', HttpStatus.BAD_REQUEST);
     }
 
-    try {
-      const url = `${this.BASE_URL}/pblprfr/${id}?service=${this.getApiKey()}`;
-      const response = await firstValueFrom(this.httpService.get(url));
-
-      let jsonData;
-      if (typeof response.data === 'string') {
-        jsonData = await parseStringPromise(response.data, {
-          explicitArray: false,
-        });
-      } else {
-        jsonData = response.data;
-      }
-
-      if (!jsonData || !jsonData.dbs || !jsonData.dbs.db) {
-        throw new HttpException(
-          '해당 공연 정보를 찾을 수 없습니다.',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      return jsonData.dbs.db;
-    } catch (error) {
-      this.logger.error(
-        `fetchPerformanceDetail 실패 (ID: ${id}): ${error.message}`,
-      );
-      throw new HttpException(
-        `KOPIS API 호출 중 오류 발생: ${error.message}`,
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
-    }
+    const url = `${this.BASE_URL}/pblprfr/${id}?service=${this.getApiKey()}`;
+    return this.fetchAndParseKopisData(
+      url,
+      '해당 공연 정보를 찾을 수 없습니다.',
+    );
   }
 }
