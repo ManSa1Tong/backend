@@ -13,6 +13,8 @@ export class MovieService {
     'http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie';
   private readonly MOVIE_IMAGE_API_SERVER =
     'https://api.koreafilm.or.kr/openapi-data2/wisenut/search_api/search_json2.jsp?collection=kmdb_new2';
+  private readonly MOVIE_CODE_API_SERVER =
+    'http://www.kobis.or.kr/kobisopenapi/webservice/rest/code/searchCodeList.json';
 
   constructor(
     private httpService: HttpService,
@@ -135,5 +137,24 @@ export class MovieService {
       endpoint: '/searchMovieInfo.json',
       params,
     });
+  }
+
+  async fetchMovieCodeData({ comCode }: { comCode: string }) {
+    try {
+      const queryString = new URLSearchParams({
+        key: this.fetchMovieApiKey(),
+        comCode,
+      }).toString();
+      const url = `${this.MOVIE_CODE_API_SERVER}?${queryString}`;
+
+      const { data } = await firstValueFrom(this.httpService.get(url));
+
+      return data;
+    } catch (error) {
+      console.error(`MOVIE CODE API 호출 실패: ${error.message}`);
+      throw new InternalServerErrorException(
+        `MOVIE CODE API 호출 중 오류 발생: ${error.message}`,
+      );
+    }
   }
 }
