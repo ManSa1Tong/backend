@@ -1,16 +1,18 @@
-import {
-  InternalServerErrorException,
-  Injectable,
-  BadRequestException,
-} from '@nestjs/common';
+import { InternalServerErrorException, Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 
+// 이미지, 대표 외부 코드 비교
+// MOVIE_API_SERVER: movieCd
+// MOVID_IMAGE_API_SERVER: CommCodes.Commcode.CodeNo
+// 코드 찾는 API 구현(2201, 2204)
 @Injectable()
 export class MovieService {
   private readonly MOVIE_API_SERVER =
-    'http://kobis.or.kr/kobisopenapi/webservice/rest/boxoffice';
+    'http://www.kobis.or.kr/kobisopenapi/webservice/rest/movie';
+  private readonly MOVIE_IMAGE_API_SERVER =
+    'https://api.koreafilm.or.kr/openapi-data2/wisenut/search_api/search_json2.jsp?collection=kmdb_new2';
 
   constructor(
     private httpService: HttpService,
@@ -37,16 +39,6 @@ export class MovieService {
     return movieImageApiKey;
   }
 
-  private validateDates(...dates: string[]) {
-    for (const date of dates) {
-      if (!/^\d{8}$/.test(date)) {
-        throw new BadRequestException(
-          `날짜 형식이 올바르지 않습니다. (YYYYMMDD 형식 필요): ${date}`,
-        );
-      }
-    }
-  }
-
   private async fetchMovieData({
     endpoint,
     params,
@@ -55,9 +47,6 @@ export class MovieService {
     params: Record<string, any>;
   }) {
     try {
-      // ✅ 공통 API URL 생성
-      this.validateDates(params.targetDt);
-
       const queryString = new URLSearchParams({
         key: this.fetchMovieApiKey(),
         ...params,
@@ -75,60 +64,76 @@ export class MovieService {
     }
   }
 
-  async fetchManyDailyMovie({
-    targetDt,
-    itemPerPage = '10',
-    multiMovieYn,
-    repNationCd,
-  }: {
-    targetDt: string;
-    itemPerPage?: string;
-    multiMovieYn?: string;
-    repNationCd?: string;
-  }) {
-    const params: Record<string, string> = { targetDt };
+  private async fetchMovieImageData() {
+    try {
+      // ✅ 공통 API URL 생성
+      const queryString = new URLSearchParams({
+        ServiceKey: this.fetchMovieImageApiKey(),
+        // ...params,
+      }).toString();
+      const url = `${this.MOVIE_IMAGE_API_SERVER}&${queryString}`;
 
-    params.itemPerPage = itemPerPage;
-    if (multiMovieYn) params.multiMovieYn = multiMovieYn;
-    if (repNationCd) params.repNationCd = repNationCd;
+      const { data } = await firstValueFrom(this.httpService.get(url));
 
-    return this.fetchMovieData({
-      endpoint: '/searchDailyBoxOfficeList.json',
-      params,
-    });
-
-    // const MOVIE_IMAGE_API_SERVER =
-    //   'https://api.koreafilm.or.kr/openapi-data2/wisenut/search_api/search_json2.jsp?collection=kmdb_new2';
-    // const MOVIE_IMAGE_API_KEY = process.env.MOVIE_IMAGE_KEY;
+      return data;
+    } catch (error) {
+      console.error(`MOVIE IMAGE API 호출 실패: ${error.message}`);
+      throw new InternalServerErrorException(
+        `MOVIE IMAGE API 호출 중 오류 발생: ${error.message}`,
+      );
+    }
   }
 
-  async fetchManyWeeklyMovie({
-    targetDt,
-    weekGb = '1',
+  async fetchManyMovie({
+    curPage = '1',
     itemPerPage = '10',
-    multiMovieYn,
+    movieNm,
+    directorNm,
+    openStartDt,
+    openEndDt,
+    prdtStartYear,
+    prdtEndYear,
     repNationCd,
+    movieTypeCd,
   }: {
-    targetDt: string;
-    weekGb?: string;
-    itemPerPage?: string;
-    multiMovieYn?: string;
-    repNationCd?: string;
+    curPage: string;
+    itemPerPage: string;
+    movieNm: string;
+    directorNm: string;
+    openStartDt: string;
+    openEndDt: string;
+    prdtStartYear: string;
+    prdtEndYear: string;
+    repNationCd: string;
+    movieTypeCd: string;
   }) {
-    const params: Record<string, string> = { targetDt };
+    const params: Record<string, string> = { curPage, itemPerPage };
 
     params.itemPerPage = itemPerPage;
-    params.weekGb = weekGb;
-    if (multiMovieYn) params.multiMovieYn = multiMovieYn;
+    params.curPage = curPage;
+    if (movieNm) params.movieNm = movieNm;
+    if (directorNm) params.directorNm = directorNm;
+    if (openStartDt) params.openStartDt = openStartDt;
+    if (openEndDt) params.openEndDt = openEndDt;
+    if (prdtStartYear) params.prdtStartYear = prdtStartYear;
+    if (prdtEndYear) params.prdtEndYear = prdtEndYear;
     if (repNationCd) params.repNationCd = repNationCd;
+    if (movieTypeCd) params.movieTypeCd = movieTypeCd;
 
     return this.fetchMovieData({
-      endpoint: '/searchWeeklyBoxOfficeList.json',
+      endpoint: '/searchMovieList.json',
       params,
     });
+  }
 
-    // const MOVIE_IMAGE_API_SERVER =
-    //   'https://api.koreafilm.or.kr/openapi-data2/wisenut/search_api/search_json2.jsp?collection=kmdb_new2';
-    // const MOVIE_IMAGE_API_KEY = process.env.MOVIE_IMAGE_KEY;
+  async fetchMovie({ movieCd }: { movieCd: string }) {
+    const params: Record<string, string> = { movieCd };
+
+    params.movieCd = movieCd;
+
+    return this.fetchMovieData({
+      endpoint: '/searchMovieInfo.json',
+      params,
+    });
   }
 }

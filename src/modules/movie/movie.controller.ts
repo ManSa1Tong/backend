@@ -1,44 +1,23 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { MovieService } from './movie.service';
-import { GetDaliyMovieDto, GetWeeklyMovieDto } from './dto/fetch-movie.dto';
+import { GetMovieListDto } from './dto/fetch-movie.dto';
 import { ApiGetDaliyMovie, ApiGetWeeklyMovie } from './dto/movie.controller';
 
 @Controller('movie')
 export class MovieController {
   constructor(private movieService: MovieService) {}
 
-  @Get('/daily')
-  @ApiGetDaliyMovie()
-  async getManyDaliyMovie(
-    @Query()
-    { targetDt, itemPerPage, multiMovieYn, repNationCd }: GetDaliyMovieDto,
-  ) {
-    return await this.movieService.fetchManyDailyMovie({
-      targetDt,
-      itemPerPage,
-      multiMovieYn,
-      repNationCd,
-    });
+  @Get()
+  @ApiGetWeeklyMovie()
+  async getManyWeeklyMovie(@Query() data: GetMovieListDto) {
+    return await this.movieService.fetchManyMovie(data);
   }
 
-  @Get('/weekly')
-  @ApiGetWeeklyMovie()
-  async getManyWeeklyMovie(
-    @Query()
-    {
-      targetDt,
-      weekGb,
-      itemPerPage,
-      multiMovieYn,
-      repNationCd,
-    }: GetWeeklyMovieDto,
-  ) {
-    return await this.movieService.fetchManyWeeklyMovie({
-      targetDt,
-      weekGb,
-      itemPerPage,
-      multiMovieYn,
-      repNationCd,
+  @Get('/:movieCd')
+  @ApiGetDaliyMovie()
+  async getManyDaliyMovie(@Param('movieCd') movieCd: string) {
+    return await this.movieService.fetchMovie({
+      movieCd,
     });
   }
 }
