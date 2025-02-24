@@ -3,10 +3,6 @@ import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 
-// 이미지, 대표 외부 코드 비교
-// MOVIE_API_SERVER: movieCd
-// MOVID_IMAGE_API_SERVER: CommCodes.Commcode.CodeNo
-// 코드 찾는 API 구현(2201, 2204)
 @Injectable()
 export class MovieService {
   private readonly MOVIE_API_SERVER =
@@ -66,12 +62,18 @@ export class MovieService {
     }
   }
 
-  private async fetchMovieImageData() {
+  private async fetchMovieImageData({
+    title,
+    listCount = '500',
+  }: {
+    title: string;
+    listCount?: string;
+  }) {
     try {
-      // ✅ 공통 API URL 생성
       const queryString = new URLSearchParams({
         ServiceKey: this.fetchMovieImageApiKey(),
-        // ...params,
+        title,
+        listCount,
       }).toString();
       const url = `${this.MOVIE_IMAGE_API_SERVER}&${queryString}`;
 
@@ -133,10 +135,22 @@ export class MovieService {
 
     params.movieCd = movieCd;
 
-    return this.fetchMovieData({
+    const { movieInfoResult } = await this.fetchMovieData({
       endpoint: '/searchMovieInfo.json',
       params,
     });
+
+    const movieImageData = await this.fetchMovieImageData({
+      title: movieInfoResult.movieInfo.movieNm,
+    });
+    const matchedMovie = movieImageData?.Data?.[0]?.Result?.find(
+      (item: any) => item?.CommCodes?.CommCode?.[0].CodeNo === movieCd,
+    );
+
+    return {
+      ...movieInfoResult,
+      poster: matchedMovie?.posters?.split('|')[0] || '',
+    };
   }
 
   async fetchMovieCodeData({ comCode }: { comCode: string }) {
