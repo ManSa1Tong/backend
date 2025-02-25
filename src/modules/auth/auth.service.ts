@@ -175,12 +175,22 @@ export class AuthService {
     return { message: '로그아웃 성공' };
   }
 
-  // 리프레쉬 토큰 갱신
+  // 리프레시 토큰 갱신
   async refreshTokens(refreshToken: string) {
     try {
       // 1. 리프레시 토큰 검증
       const payload = this.jwtService.verify(refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET,
+        publicKey: readFileSync(
+          join(
+            __dirname,
+            '..',
+            '..',
+            '..',
+            this.configService.get<string>('JWT_REFRESH_PUBLIC_KEY_PATH') || '',
+          ),
+          'utf8',
+        ),
+        algorithms: ['RS256'],
       });
 
       // 2. Session 테이블에서 리프레시 토큰 검증
