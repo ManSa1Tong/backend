@@ -57,7 +57,7 @@ export class BookService {
   }
 
   async fetchManyBook() {
-    const books = await this.fetchManyBookData({
+    const domesticBooks = await this.fetchManyBookData({
       SearchTarget: 'Book',
       endpoint: 'ItemList.aspx',
     });
@@ -71,7 +71,7 @@ export class BookService {
     });
 
     return {
-      books: books.item,
+      domesticBooks: domesticBooks.item,
       foreignBooks: foreignBooks.item,
       eBooks: eBooks.item,
     };
