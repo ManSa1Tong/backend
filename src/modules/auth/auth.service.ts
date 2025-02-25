@@ -205,17 +205,17 @@ export class AuthService {
 
       // 3. 새로운 JWT 발급
       const newAccessToken = await this.generateAccessToken({
-        id: parseInt(payload.sub), // ✅ sub를 number로 변환
+        id: parseInt(payload.sub),
         email: payload.email,
       });
       const newRefreshToken = await this.generateRefreshToken({
-        id: parseInt(payload.sub), // ✅ sub를 number로 변환
+        id: parseInt(payload.sub),
         email: payload.email,
       });
 
       // 4. Prisma의 Session 테이블에 새로운 Refresh Token 저장
       await this.prisma.session.update({
-        where: { userId: payload.sub },
+        where: { userId: parseInt(payload.sub) },
         data: {
           refreshToken: newRefreshToken,
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7일 후 만료
@@ -227,7 +227,8 @@ export class AuthService {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
       };
-    } catch {
+    } catch (error) {
+      console.error('Refresh token verify error:', error);
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
