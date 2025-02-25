@@ -21,7 +21,6 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: any,
     done: VerifyCallback,
   ): Promise<any> {
-    // profile 객체에 사용자 정보(이메일, 이름, 프로필 사진 등)가 들어있음
     const { id, displayName, emails } = profile;
 
     const user = {
