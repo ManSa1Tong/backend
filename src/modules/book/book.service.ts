@@ -5,8 +5,9 @@ import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class BookService {
-  private readonly ALADIN_API_SERVER =
-    'http://www.aladin.co.kr/ttb/api/ItemList.aspx';
+  private readonly ALADIN_API_SERVER = 'http://www.aladin.co.kr/ttb/api';
+  //   private readonly ALADIN_API_SERVER =
+  //     'http://www.aladin.co.kr/ttb/api/ItemLookUp.aspx';
 
   constructor(
     private configService: ConfigService,
@@ -25,7 +26,13 @@ export class BookService {
     return aladinApiKey;
   }
 
-  private async fetchManyBookData({ SearchTarget }: { SearchTarget: string }) {
+  private async fetchManyBookData({
+    SearchTarget,
+    endpoint,
+  }: {
+    SearchTarget: string;
+    endpoint: string;
+  }) {
     try {
       const queryString = new URLSearchParams({
         ttbkey: this.fetchBookApiKey(),
@@ -36,7 +43,7 @@ export class BookService {
         output: 'js',
         Version: '20131101',
       }).toString();
-      const url = `${this.ALADIN_API_SERVER}?${queryString}`;
+      const url = `${this.ALADIN_API_SERVER}/${endpoint}?${queryString}`;
 
       const { data } = await firstValueFrom(this.httpService.get(url));
 
@@ -50,16 +57,45 @@ export class BookService {
   }
 
   async fetchManyBook() {
-    const books = await this.fetchManyBookData({ SearchTarget: 'Book' });
+    const books = await this.fetchManyBookData({
+      SearchTarget: 'Book',
+      endpoint: 'ItemList.aspx',
+    });
     const foreignBooks = await this.fetchManyBookData({
       SearchTarget: 'Foreign',
+      endpoint: 'ItemList.aspx',
     });
-    const eBooks = await this.fetchManyBookData({ SearchTarget: 'eBook' });
+    const eBooks = await this.fetchManyBookData({
+      SearchTarget: 'eBook',
+      endpoint: 'ItemList.aspx',
+    });
 
     return {
       books: books.item,
       foreignBooks: foreignBooks.item,
       eBooks: eBooks.item,
     };
+  }
+
+  async fetchBook({ isbn13 }: { isbn13: string }) {
+    try {
+      const queryString = new URLSearchParams({
+        ttbkey: this.fetchBookApiKey(),
+        itemIdType: 'ISBN13',
+        ItemId: isbn13,
+        output: 'js',
+        Version: '20131101',
+      }).toString();
+      const url = `${this.ALADIN_API_SERVER}/ItemLookUp.aspx?${queryString}`;
+
+      const { data } = await firstValueFrom(this.httpService.get(url));
+
+      return { book: data.item[0] };
+    } catch (error) {
+      console.error(`ALADIN API 호출 실패: ${error.message}`);
+      throw new InternalServerErrorException(
+        `ALADIN API 호출 중 오류 발생: ${error.message}`,
+      );
+    }
   }
 }
