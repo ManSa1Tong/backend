@@ -12,13 +12,11 @@ import { LoginDto } from './dto/login.dto';
 import { ConfigService } from '@nestjs/config';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { OAuth2Client } from 'google-auth-library';
 
 @Injectable()
 export class AuthService {
   private accessPrivateKey: string;
   private refreshPrivateKey: string;
-  private googleClient: OAuth2Client;
 
   constructor(
     private readonly prisma: PrismaService,
