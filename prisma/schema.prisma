@@ -25,7 +25,7 @@ model User {
 
 model Session {
   id          Int      @id @default(autoincrement())
-  userId      Int      @unique // User와 1:1 관계
+  userId      Int      
   refreshToken String  @db.Text // ✅ 길이 제한 없이 저장 가능하도록 변경
   expiresAt   DateTime 
   createdAt   DateTime @default(now())
