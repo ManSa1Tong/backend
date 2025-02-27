@@ -2,15 +2,23 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
+  UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { UserService } from './user.service';
-// import { CurrentUser } from '../../decorators/curretUser.decorator';
-// import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
+import { CurrentUser } from 'src/decorators/curretUser.decorator';
 import { CheckNicknameDto } from './dto/check-nickname.dto';
+import { GetUserInfoDto } from './dto/get-user.dto';
 
 @ApiTags('user')
 @Controller('/users')
@@ -63,5 +71,44 @@ export class UserController {
     }
 
     return { message: '사용 가능한 닉네임입니다.' };
+  }
+
+  @ApiBearerAuth('JWT')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: '본인 정보 확인',
+    description: '본인 정보 확인',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '본인 정보 확인 성공',
+    type: GetUserInfoDto,
+  })
+  @ApiResponse({
+    status: 401,
+    description: '토큰이 없을 경우',
+    schema: {
+      example: {
+        message: '인증 토큰을 포함해주세요',
+        error: 'Unauthorized',
+        statusCode: 401,
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: '정보가 없는 경우',
+    schema: {
+      example: {
+        message: '존재하지 않는 회원입니다.',
+        error: 'Not Found',
+        statusCode: 404,
+      },
+    },
+  })
+  @Get('/me')
+  async getUser(@CurrentUser() userId: string) {
+    return await this.userService.fetchUserByUserId({ userId });
   }
 }
