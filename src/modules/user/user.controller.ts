@@ -3,22 +3,21 @@ import {
   Body,
   Controller,
   Get,
-  HttpCode,
-  HttpStatus,
   Post,
   UseGuards,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../auth/guard/jwt-auth.guard';
 import { CurrentUser } from 'src/decorators/curretUser.decorator';
 import { CheckNicknameDto } from './dto/check-nickname.dto';
 import { GetUserInfoDto } from './dto/get-user.dto';
+import {
+  ApiResponseSuccess,
+  ApiResponseError,
+  ApiOperationSummary,
+  ApiResponseCreated,
+} from 'src/decorators/swagger-response.decorator';
 
 @ApiTags('user')
 @Controller('/users')
@@ -26,42 +25,13 @@ export class UserController {
   constructor(private readonly userService: UserService) {}
 
   @Post('nickname-check')
-  @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({
-    summary: '닉네임 중복 확인',
-    description: '입력한 닉네임이 이미 사용 중인지 확인합니다.',
-  })
-  @ApiResponse({
-    status: 201,
-    description: '닉네임 사용 가능',
-    schema: {
-      example: {
-        message: '사용 가능한 닉네임입니다.',
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description: '잘못된 요청 (닉네임 형식 오류)',
-    schema: {
-      example: {
-        message: ['닉네임은 반드시 입력해야 합니다.'],
-        error: 'Bad Request',
-        statusCode: 400,
-      },
-    },
-  })
-  @ApiResponse({
-    status: 400,
-    description: '닉네임 중복',
-    schema: {
-      example: {
-        message: '이미 사용 중인 닉네임입니다.',
-        error: 'Bad Request',
-        statusCode: 400,
-      },
-    },
-  })
+  @ApiOperationSummary(
+    '닉네임 중복 확인',
+    '입력한 닉네임이 이미 사용 중인지 확인합니다.',
+  )
+  @ApiResponseCreated('닉네임 사용 가능')
+  @ApiResponseError('닉네임 형식 오류', 400)
+  @ApiResponseError('닉네임 중복', 400)
   async postNicknameCheck(@Body() { nickname }: CheckNicknameDto) {
     const isAvailable =
       await this.userService.checkNicknameAvailability(nickname);
@@ -75,38 +45,10 @@ export class UserController {
 
   @ApiBearerAuth('JWT')
   @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: '본인 정보 확인',
-    description: '본인 정보 확인',
-  })
-  @ApiResponse({
-    status: 200,
-    description: '본인 정보 확인 성공',
-    type: GetUserInfoDto,
-  })
-  @ApiResponse({
-    status: 401,
-    description: '토큰이 없을 경우',
-    schema: {
-      example: {
-        message: '인증 토큰을 포함해주세요',
-        error: 'Unauthorized',
-        statusCode: 401,
-      },
-    },
-  })
-  @ApiResponse({
-    status: 404,
-    description: '정보가 없는 경우',
-    schema: {
-      example: {
-        message: '존재하지 않는 회원입니다.',
-        error: 'Not Found',
-        statusCode: 404,
-      },
-    },
-  })
+  @ApiOperationSummary('본인 정보 확인', '본인 정보를 확인합니다.')
+  @ApiResponseSuccess('본인 정보 확인 성공', GetUserInfoDto)
+  @ApiResponseError('인증 토큰이 없을 경우', 401)
+  @ApiResponseError('존재하지 않는 회원입니다.', 404)
   @Get('/me')
   async getUser(@CurrentUser() userId: string) {
     return await this.userService.fetchUserByUserId({ userId });
