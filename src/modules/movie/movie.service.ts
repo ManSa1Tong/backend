@@ -124,10 +124,12 @@ export class MovieService {
     if (repNationCd) params.repNationCd = repNationCd;
     if (movieTypeCd) params.movieTypeCd = movieTypeCd;
 
-    return this.fetchMovieData({
+    const { movieListResult } = await this.fetchMovieData({
       endpoint: '/searchMovieList.json',
       params,
     });
+
+    return { movieList: movieListResult.movieList };
   }
 
   async fetchMovie({ movieCd }: { movieCd: string }) {
@@ -163,7 +165,7 @@ export class MovieService {
 
       const { data } = await firstValueFrom(this.httpService.get(url));
 
-      return data;
+      return data.codes;
     } catch (error) {
       console.error(`MOVIE CODE API 호출 실패: ${error.message}`);
       throw new InternalServerErrorException(
