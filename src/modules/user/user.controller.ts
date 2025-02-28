@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
@@ -18,6 +19,7 @@ import {
   ApiOperationSummary,
   ApiResponseCreated,
 } from 'src/decorators/swagger-response.decorator';
+import { PutUserDto } from './dto/put-user.dto';
 
 @ApiTags('user')
 @Controller('/users')
@@ -52,5 +54,20 @@ export class UserController {
   @Get('/me')
   async getUser(@CurrentUser() userId: string) {
     return await this.userService.fetchUserByUserId({ userId });
+  }
+
+  @ApiBearerAuth('JWT')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperationSummary('본인 정보 수정', '본인 정보를 수정합니다.')
+  @ApiResponseCreated('본인 정보 수정 성공', GetUserInfoDto)
+  @ApiResponseError('인증 토큰이 없을 경우', 401)
+  @ApiResponseError('존재하지 않는 회원입니다.', 404)
+  @ApiResponseError('닉네임 중복', 400)
+  @Put('/me')
+  async putUser(
+    @CurrentUser() userId: string,
+    @Body() { nickname }: PutUserDto,
+  ) {
+    return await this.userService.modifyUser({ userId, nickname });
   }
 }
