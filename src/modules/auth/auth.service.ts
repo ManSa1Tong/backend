@@ -109,7 +109,7 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const { email, password } = loginDto;
+    const { email, password, deviceId } = loginDto;
 
     // 1. 사용자 확인
     const user = await this.userService.findUserByEmail(email);
@@ -129,21 +129,34 @@ export class AuthService {
       });
     }
 
-    // 3. 새로운 JWT 발급
-    const accessToken = await this.generateAccessToken(user);
-    const refreshToken = await this.generateRefreshToken(user);
+    // 3. 새로운 JWT 발급 (payload: { id: number; email: string }) 함수 시그니처에 맞춰서 수정
+    const accessToken = await this.generateAccessToken({
+      id: user.id,
+      email: user.email,
+    });
+    const refreshToken = await this.generateRefreshToken({
+      id: user.id,
+      email: user.email,
+    });
 
-    // 4. Refresh Token을 Prisma의 Session 테이블에 저장
+    // 4. (userId, deviceId)로 upsert
     await this.prisma.session.upsert({
-      where: { userId: user.id },
+      where: {
+        // 복합 유니크: userId_deviceId
+        userId_deviceId: {
+          userId: user.id,
+          deviceId,
+        },
+      },
       create: {
         userId: user.id,
-        refreshToken: refreshToken, // ✅ Prisma에 저장할 때 해싱하지 않음
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7일 후 만료
+        deviceId,
+        refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
       update: {
-        refreshToken: refreshToken, // ✅ 새로운 Refresh Token으로 갱신
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7일 후 갱신
+        refreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
 
@@ -153,7 +166,8 @@ export class AuthService {
       message: '로그인 되었습니다',
       data: {
         accessToken,
-        refreshToken, // ✅ 원본 Refresh Token 반환
+        refreshToken,
+        deviceId,
       },
       user: {
         id: user.id,
@@ -174,9 +188,11 @@ export class AuthService {
   }
 
   // 리프레시 토큰 갱신
-  async refreshTokens(refreshToken: string) {
+  async refreshTokens(refreshDto: { refreshToken: string; deviceId: string }) {
     try {
-      // 1. 리프레시 토큰 검증
+      const { refreshToken, deviceId } = refreshDto;
+
+      // 1. 리프레시 토큰 검증 (RSA 공개키)
       const payload = this.jwtService.verify(refreshToken, {
         publicKey: readFileSync(
           join(
@@ -191,32 +207,44 @@ export class AuthService {
         algorithms: ['RS256'],
       });
 
-      // 2. Session 테이블에서 리프레시 토큰 검증
+      const userId = parseInt(payload.sub);
+
+      // 2. Session 테이블에서 (userId, deviceId)로 세션 찾기 (복합 유니크)
       const session = await this.prisma.session.findUnique({
-        where: { userId: parseInt(payload.sub) }, // ✅ sub를 number로 변환하여 검색
+        where: {
+          userId_deviceId: {
+            userId,
+            deviceId,
+          },
+        },
       });
 
-      // 세션이 없거나 리프레시 토큰이 일치하지 않으면 오류 발생
+      // 세션이 없거나 리프레시 토큰이 일치하지 않으면 오류
       if (!session || session.refreshToken !== refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
-      // 3. 새로운 JWT 발급
+      // 3. 새 JWT 발급
       const newAccessToken = await this.generateAccessToken({
-        id: parseInt(payload.sub),
+        id: userId,
         email: payload.email,
       });
       const newRefreshToken = await this.generateRefreshToken({
-        id: parseInt(payload.sub),
+        id: userId,
         email: payload.email,
       });
 
-      // 4. Prisma의 Session 테이블에 새로운 Refresh Token 저장
+      // 4. 세션 업데이트
       await this.prisma.session.update({
-        where: { userId: parseInt(payload.sub) },
+        where: {
+          userId_deviceId: {
+            userId,
+            deviceId,
+          },
+        },
         data: {
           refreshToken: newRefreshToken,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7일 후 만료
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
       });
 
@@ -224,6 +252,7 @@ export class AuthService {
       return {
         accessToken: newAccessToken,
         refreshToken: newRefreshToken,
+        deviceId,
       };
     } catch (error) {
       console.error('Refresh token verify error:', error);
@@ -238,10 +267,11 @@ export class AuthService {
     lastName: string;
     picture: string;
     sub: string;
+    deviceId: string; // ⭐
   }) {
-    const { email, firstName, lastName, picture, sub } = payload;
+    const { email, firstName, lastName, picture, sub, deviceId } = payload;
 
-    // DB에 사용자 정보 저장 또는 업데이트
+    // 1. 유저 upsert
     const user = await this.prisma.user.upsert({
       where: { email },
       create: {
@@ -259,7 +289,7 @@ export class AuthService {
       },
     });
 
-    // Access / Refresh Token 발급
+    // 2. 액세스/리프레시 토큰 발급
     const accessToken = await this.generateAccessToken({
       id: user.id,
       email: user.email,
@@ -269,11 +299,17 @@ export class AuthService {
       email: user.email,
     });
 
-    // Session 테이블에 Refresh Token만 저장
+    // 3. Session 테이블 upsert (복합 유니크)
     await this.prisma.session.upsert({
-      where: { userId: user.id },
+      where: {
+        userId_deviceId: {
+          userId: user.id,
+          deviceId,
+        },
+      },
       create: {
         userId: user.id,
+        deviceId,
         refreshToken,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
@@ -287,6 +323,7 @@ export class AuthService {
       message: '구글 소셜로그인에 성공했습니다.',
       accessToken,
       refreshToken,
+      deviceId,
       user: {
         email: user.email,
         nickname: user.nickname,
@@ -301,10 +338,11 @@ export class AuthService {
     nickname: string;
     id: string;
     profileImage?: string;
+    deviceId: string; // ⭐
   }) {
-    const { email, nickname, id, profileImage } = payload;
+    const { email, nickname, id, profileImage, deviceId } = payload;
 
-    // DB에 사용자 정보 저장 또는 업데이트
+    // 1. 유저 upsert
     const user = await this.prisma.user.upsert({
       where: { email },
       create: {
@@ -322,7 +360,7 @@ export class AuthService {
       },
     });
 
-    // Access / Refresh Token 발급
+    // 2. 액세스/리프레시 토큰 발급
     const accessToken = await this.generateAccessToken({
       id: user.id,
       email: user.email,
@@ -332,11 +370,17 @@ export class AuthService {
       email: user.email,
     });
 
-    // Session 테이블에 Refresh Token만 저장
+    // 3. 세션 upsert
     await this.prisma.session.upsert({
-      where: { userId: user.id },
+      where: {
+        userId_deviceId: {
+          userId: user.id,
+          deviceId,
+        },
+      },
       create: {
         userId: user.id,
+        deviceId,
         refreshToken,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
@@ -350,6 +394,7 @@ export class AuthService {
       message: '네이버 소셜로그인에 성공했습니다.',
       accessToken,
       refreshToken,
+      deviceId,
       user: {
         email: user.email,
         nickname: user.nickname,
