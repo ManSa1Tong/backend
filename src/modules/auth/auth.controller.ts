@@ -8,6 +8,7 @@ import {
   UseGuards,
   UsePipes,
   ValidationPipe,
+  Query,
 } from '@nestjs/common';
 import { JwtAuthGuard } from './guard/jwt-auth.guard';
 import { AuthGuard } from '@nestjs/passport';
@@ -20,6 +21,7 @@ import {
 } from '@nestjs/swagger';
 import { SignUpDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { RefreshDto } from './dto/refresh.dto';
 import { AuthService } from './auth.service';
 import { CurrentUser } from 'src/decorators/curretUser.decorator';
 import { OAuthUser } from 'src/decorators/oauthUser.decorator';
@@ -89,6 +91,7 @@ export class AuthController {
         data: {
           accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
           refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+          deviceId: 'chrome_1234',
         },
         user: {
           id: 8,
@@ -170,11 +173,7 @@ export class AuthController {
   })
   @ApiBody({
     description: '리프레시 토큰 요청 본문',
-    schema: {
-      example: {
-        refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-      },
-    },
+    type: RefreshDto,
   })
   @ApiResponse({
     status: 200,
@@ -200,8 +199,8 @@ export class AuthController {
       },
     },
   })
-  async postRefresh(@Body('refreshToken') refreshToken: string) {
-    return this.authService.refreshTokens(refreshToken);
+  async postRefresh(@Body() refreshDto: RefreshDto) {
+    return this.authService.refreshTokens(refreshDto);
   }
 
   // 1) Google 로그인 요청 → 구글 로그인 창으로 Redirect
@@ -233,9 +232,10 @@ export class AuthController {
     description: 'Google 로그인 성공',
     schema: {
       example: {
-        message: '구글 소셜로그인에 성공했습니다',
+        message: 'Google 소셜로그인에 성공했습니다',
         accessToken: 'jwt-token',
         refreshToken: 'refresh-token',
+        deviceId: 'defaultGoogleDevice',
         user: {
           email: 'user@example.com',
           nickname: 'admin',
@@ -254,16 +254,17 @@ export class AuthController {
       name: string;
       accessToken: string; // 구글 측 OAuth accessToken
     },
+    @Query('deviceId') deviceId?: string, // ⭐ 쿼리 파라미터로 deviceId 받기
   ) {
     // 1. user 객체에서 필요한 필드 추출
-    // GoogleStrategy에서 'displayName', 'emails[0].value', etc. 로 구성되었을 수 있음
     const [firstName, lastName] = user.name.split(' ');
     const payload = {
       email: user.email,
       firstName: firstName ?? '',
       lastName: lastName ?? '',
-      picture: '', // 구글 프로필 이미지 (user.picture)
+      picture: '',
       sub: user.providerId,
+      deviceId: deviceId || 'defaultGoogleDevice', // ⭐ deviceId 추가
     };
 
     // 2. AuthService의 createGoogleLogin 호출
@@ -302,9 +303,10 @@ export class AuthController {
     description: 'Naver 로그인 성공',
     schema: {
       example: {
-        message: '구글 소셜로그인에 성공했습니다',
+        message: 'Naver 소셜로그인에 성공했습니다',
         accessToken: 'jwt-token',
         refreshToken: 'refresh-token',
+        deviceId: 'defaultNaverDevice',
         user: {
           email: 'user@example.com',
           nickname: 'admin',
@@ -323,13 +325,15 @@ export class AuthController {
       name: string;
       accessToken: string; // Passport가 넘겨주는 OAuth accessToken (네이버 측)
     },
+    @Query('deviceId') deviceId?: string, // ⭐ 쿼리 파라미터로 deviceId 받기
   ) {
-    // 1. Passport가 준 user 객체에서 필요한 필드를 추출
+    // 1. Passport가 준 user 객체에서 필요한 필드 추출
     const payload = {
       email: user.email,
       nickname: user.name,
       id: user.providerId,
-      profileImage: '', // 네이버에선 user.picture나 user.profile_image 등으로 받을 수도 있음
+      profileImage: '',
+      deviceId: deviceId || 'defaultNaverDevice', // ⭐ deviceId 추가
     };
 
     // 2. AuthService의 createNaverLogin 호출
