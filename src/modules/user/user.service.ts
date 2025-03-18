@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
-// import { Prisma } from '@prisma/client';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import { GetUserInfoDto } from './dto/get-user.dto';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class UserService {
@@ -38,5 +39,21 @@ export class UserService {
       where: { email },
       data: { password: hashedPassword },
     });
+  }
+
+  async fetchUserByUserId({
+    userId,
+  }: {
+    userId: string;
+  }): Promise<GetUserInfoDto | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: Number(userId) },
+    });
+
+    if (!user) {
+      throw new NotFoundException('존재하지 않는 회원입니다.');
+    }
+
+    return plainToInstance(GetUserInfoDto, user);
   }
 }
