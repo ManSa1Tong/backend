@@ -8,6 +8,7 @@ import { MapleModule } from './modules/maple/maple.module';
 import { ConfigModule } from '@nestjs/config';
 import { MovieModule } from './modules/movie/movie.module';
 import { KopisModule } from './modules/kopis/kopis.module';
+import { BookModule } from './modules/book/book.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { KopisModule } from './modules/kopis/kopis.module';
     ConfigModule.forRoot({ isGlobal: true }),
     MovieModule,
     KopisModule,
+    BookModule,
   ],
   controllers: [AppController],
   providers: [AppService],

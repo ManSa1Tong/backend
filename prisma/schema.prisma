@@ -25,11 +25,13 @@ model User {
 
 model Session {
   id          Int      @id @default(autoincrement())
-  userId      Int      
+  userId      Int
+  deviceId    String   // 각 기기를 구분할 고유 ID      
   refreshToken String  @db.Text // ✅ 길이 제한 없이 저장 가능하도록 변경
   expiresAt   DateTime 
   createdAt   DateTime @default(now())
 
   // 관계 설정
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, deviceId]) // ✅ 복합 유니크
 }
