@@ -6,3 +6,32 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String?  // 비밀번호가 없어도 됨 (소셜 로그인 계정)
+  nickname  String   @unique
+  createdAt DateTime @default(now())
+
+  // 소셜 로그인 추가 필드
+  authProvider  String?  // 예: 'google', 'naver' 등
+  authProviderId String? // 예: Google/Naver에서 받은 고유 ID
+  profileImage  String?  // 프로필 이미지 URL
+
+  // 관계 설정
+  sessions  Session[] // ✅ 여러 개의 Refresh Token을 가질 수 있음
+}
+
+model Session {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  deviceId    String   // 각 기기를 구분할 고유 ID      
+  refreshToken String  @db.Text // ✅ 길이 제한 없이 저장 가능하도록 변경
+  expiresAt   DateTime 
+  createdAt   DateTime @default(now())
+
+  // 관계 설정
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, deviceId]) // ✅ 복합 유니크
+}
