@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import { GetUserInfoDto } from './dto/get-user.dto';
@@ -55,5 +59,27 @@ export class UserService {
     }
 
     return plainToInstance(GetUserInfoDto, user);
+  }
+
+  async modifyUser({
+    userId,
+    nickname,
+  }: {
+    userId: string;
+    nickname: string;
+  }): Promise<GetUserInfoDto | null> {
+    await this.fetchUserByUserId({ userId });
+
+    const isAvailable = await this.checkNicknameAvailability(nickname);
+    if (!isAvailable) {
+      throw new BadRequestException('닉네임이 중복됩니다.');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: Number(userId) },
+      data: { nickname },
+    });
+
+    return plainToInstance(GetUserInfoDto, updatedUser);
   }
 }
